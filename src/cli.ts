@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Manifest } from "./spec";
+import { siteLabel } from "./spec";
 import { readLock, writeLock } from "./lockfile";
 import type { Lockfile } from "./lockfile";
 import { check, fix, accept } from "./engine";
@@ -66,7 +67,7 @@ function tag(status: string): string {
 function printReport(report: Report): void {
   for (const f of report.findings) {
     console.log(`${tag(f.status)}  ${f.tetherId}  —  ${f.message}`);
-    for (const w of f.writes) console.log(`           ${w.site.artifact}: ${w.from ?? "(none)"} -> ${w.to}`);
+    for (const w of f.writes) console.log(`           ${siteLabel(w.site)}: ${w.from ?? "(none)"} -> ${w.to}`);
   }
   const s = report.summary;
   console.log(
@@ -140,7 +141,7 @@ function main(): void {
         process.exit(2);
       }
       for (const v of seedValuesForTether(root, t, lock)) seeds.add(v);
-      knownArtifacts = new Set(t.sites.map((s) => s.artifact));
+      knownArtifacts = new Set(t.sites.map((s) => s.artifact).filter((a): a is string => a !== undefined));
     }
     if (seeds.size === 0) {
       console.error("discover needs a tether id (to seed from its values) or one or more --value <v>");

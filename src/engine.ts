@@ -86,6 +86,8 @@ export function check(manifest: Manifest, root: string, lock: Lockfile): Report 
         return finding(t, "rebased", `all sites agree on "${d.commonValue}"; baseline is behind (run \`yakir fix\`)`, []);
       case "autofix":
         return finding(t, "drifted", `auto-fixable: propagate "${d.winner}" to ${d.writes.length} site(s) (run \`yakir fix\`)`, d.writes);
+      case "report":
+        return finding(t, "drifted", d.reason, d.writes);
       case "blocked":
         return finding(t, "drifted", d.reason, d.writes);
       case "conflict":
@@ -120,6 +122,8 @@ export function fix(manifest: Manifest, root: string, lock: Lockfile): Report {
         lock.tethers[t.id] = d.nextBaseline;
         return finding(t, "fixed", `propagated "${d.winner}" to ${d.writes.length} site(s)`, d.writes, true);
       }
+      case "report":
+        return finding(t, "drifted", d.reason, d.writes);
       case "blocked":
         return finding(t, "drifted", d.reason, d.writes);
       case "conflict":

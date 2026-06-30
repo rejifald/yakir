@@ -34,17 +34,26 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 
 ## Status
 
-Milestone 1 (token tier) is implemented: the engine, the `check` / `fix` /
-`accept` / `init` CLI, the `discover` scanner, three anchor strategies
-(`json-pointer`, `region`, `pattern`), and a `yakir.lock` baseline. 23 tests
-green, `tsc --noEmit` clean, zero runtime dependencies.
+Milestones 1–2 are implemented: the engine, the `check` / `fix` / `accept` /
+`init` CLI, the `discover` scanner, a `yakir.lock` baseline, and two tiers.
 
-**Dogfood:** running `yakir check` against the StitchAPI repo catches real drift —
-the README claims `1.0.0-rc.3` while the packages are at `1.0.0-rc.4` — and
-`yakir discover` finds every other place those versions live. See
+- **Token tier** — three anchor strategies (`json-pointer`, `region`, `pattern`).
+- **Executable tier** — a **`command`** source whose value is *measured* by running
+  a shell command and extracting from stdout (a JSON path, a regex capture, or the
+  **set** of all matches), plus **set-valued** `pattern` sites (`all` + `allow`)
+  reconciled by set-equality. Measured/set tethers are detect-and-report — yakir
+  never auto-rewrites a measurement or a set of numbers in prose. A command runs
+  arbitrary shell, so it is **declared-only**: `discover` never proposes or runs one.
+
+42 tests green, `tsc --noEmit` clean, zero runtime dependencies.
+
+**Dogfood:** running `yakir check` against the StitchAPI repo catches real drift in
+both tiers — a README version that lags `package.json` (token), and five files that
+advertise a `~24 kB` bundle the build now measures at `~23 kB` (executable). See
 [examples/stitchapi-release-version.yakir.json](examples/stitchapi-release-version.yakir.json).
 
-Next: the executable tier (type-check `twoslash` fences, link resolution).
+Next: the semantic tier (diff-aware judge, BYO model); type-check `twoslash` fences
+and link resolution as further executable-tier runners.
 
 ### Try it
 

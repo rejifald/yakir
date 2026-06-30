@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
-import type { Site, Tether } from "./spec";
+import type { Site, Tether, CommandExtract } from "./spec";
 import { siteKey } from "./spec";
 import {
   getJsonPointer,
@@ -8,16 +9,24 @@ import {
   getRegion,
   setRegion,
   getPattern,
+  getPatternAll,
   setPattern,
+  canonicalSet,
 } from "./locators";
 
 export interface Extracted {
   value: string | undefined;
-  /** Set when the anchor could not be resolved (missing file, dangling marker). */
+  /** Set when the anchor could not be resolved (missing file, dangling marker, failed command). */
   error?: string;
 }
 
 export function extractSite(root: string, site: Site): Extracted {
+  const l = site.locator;
+
+  // Executable tier: measure the value by running a command (reads no file).
+  if (l.kind === "command") return runCommand(root, l.run, l.extract);
+
+  if (!site.artifact) return { value: undefined, error: `site has no artifact for a ${l.kind} locator` };
   const abs = join(root, site.artifact);
   if (!existsSync(abs)) return { value: undefined, error: `file not found: ${site.artifact}` };
   let text: string;
@@ -27,7 +36,6 @@ export function extractSite(root: string, site: Site): Extracted {
     return { value: undefined, error: `cannot read ${site.artifact}: ${(e as Error).message}` };
   }
 
-  const l = site.locator;
   if (l.kind === "json-pointer") {
     let doc: unknown;
     try {
@@ -44,9 +52,56 @@ export function extractSite(root: string, site: Site): Extracted {
     if (v === undefined) return { value: undefined, error: `region marker not found: tether:${l.name}` };
     return { value: v };
   }
-  const v = getPattern(text, l.match, l.flags);
+  // pattern (scalar or set-valued)
+  const v = l.all ? getPatternAll(text, l.match, l.flags, l.allow) : getPattern(text, l.match, l.flags);
   if (v === undefined) return { value: undefined, error: `pattern did not match: /${l.match}/` };
   return { value: v };
+}
+
+/** Run a declared command and pull a value (scalar or set) from its stdout. */
+function runCommand(root: string, run: string, extract: CommandExtract): Extracted {
+  let out: string;
+  try {
+    out = execSync(run, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 60_000,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+  } catch (e) {
+    const err = e as { stderr?: Buffer | string; message?: string };
+    const detail = String(err.stderr ?? err.message ?? "")
+      .trim()
+      .split("\n")
+      .slice(-3)
+      .join(" ");
+    return { value: undefined, error: `command failed (${run}): ${detail || "non-zero exit"}` };
+  }
+  return applyCommandExtract(out, extract);
+}
+
+function applyCommandExtract(stdout: string, extract: CommandExtract): Extracted {
+  if ("json" in extract) {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(stdout);
+    } catch {
+      return { value: undefined, error: "command stdout is not JSON" };
+    }
+    const v = getJsonPointer(doc, extract.json);
+    if (v === undefined) return { value: undefined, error: `json path not found in stdout: ${extract.json}` };
+    return { value: String(v) };
+  }
+  if (extract.all) {
+    const flags = extract.flags?.includes("g") ? extract.flags : (extract.flags ?? "") + "g";
+    const out = [...stdout.matchAll(new RegExp(extract.regex, flags))].map((m) => m[1] ?? m[0]);
+    if (out.length === 0) return { value: undefined, error: `regex matched nothing in stdout: /${extract.regex}/` };
+    return { value: canonicalSet(out, extract.allow) };
+  }
+  const m = new RegExp(extract.regex, extract.flags).exec(stdout);
+  if (!m) return { value: undefined, error: `regex did not match stdout: /${extract.regex}/` };
+  return { value: m[1] ?? m[0] };
 }
 
 export function extractAll(root: string, tether: Tether): Map<string, Extracted> {
@@ -56,11 +111,17 @@ export function extractAll(root: string, tether: Tether): Map<string, Extracted>
 }
 
 export function writeSite(root: string, site: Site, value: string): { ok: boolean; error?: string } {
+  const l = site.locator;
+  // Measured and set-valued sites are never auto-written: you cannot write into a
+  // command, and a set of values is not mechanically rewritable into prose.
+  if (l.kind === "command") return { ok: false, error: "command sites are measured, not writable" };
+  if (l.kind === "pattern" && l.all) return { ok: false, error: "set-valued sites are not auto-written" };
+
+  if (!site.artifact) return { ok: false, error: `site has no artifact for a ${l.kind} locator` };
   const abs = join(root, site.artifact);
   if (!existsSync(abs)) return { ok: false, error: `file not found: ${site.artifact}` };
   const text = readFileSync(abs, "utf8");
 
-  const l = site.locator;
   if (l.kind === "json-pointer") {
     let doc: unknown;
     try {

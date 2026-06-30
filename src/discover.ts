@@ -8,6 +8,11 @@ import { extractSite } from "./extract";
 // Value-seeded discovery: given a fact's known values, sweep the repo for every
 // other place those values appear. Occurrences holding a *stale* value are
 // exactly the under-covered drift a hand-written manifest would miss.
+//
+// SECURITY: discovery is file-only. It proposes only json-pointer/pattern
+// sites (never a `command`), and it never *executes* a command site when seeding
+// from a tether — a command runs arbitrary shell, so it stays strictly
+// declared-only (you opt in by hand-writing it in the manifest).
 
 const IGNORE_DIRS = new Set([
   ".git",
@@ -176,6 +181,9 @@ export function findValueSites(root: string, values: string[], opts: DiscoverOpt
 export function seedValuesForTether(root: string, tether: Tether, lock?: Lockfile): string[] {
   const vals = new Set<string>();
   for (const s of tether.sites) {
+    // Never run a command to seed discovery (declared-only boundary), and skip
+    // set-valued sites — their canonical "a, b, c" string is not a searchable value.
+    if (s.locator.kind === "command" || (s.locator.kind === "pattern" && s.locator.all)) continue;
     const ex = extractSite(root, s);
     if (ex.value !== undefined) vals.add(ex.value);
   }

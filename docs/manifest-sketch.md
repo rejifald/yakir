@@ -108,11 +108,56 @@ The token tether mechanically rewrites the symbol everywhere it is managed; the
 semantic tether notices that a blog passage *describing* the old shape needs a
 human-reviewed rewrite, and only fires because the source actually changed.
 
+## 4. A measured fact — executable tier (`command` + set)
+
+The advertised gzip bundle size is *measured*, and it is quoted as `~NN kB` in
+several human-facing files where it drifts. The fact is the **set** of the two
+rounded figures (whole entry + `import { stitch }`); every file's set must equal the
+measured set.
+
+```yaml
+- id: bundle-advertised-size
+  tier: executable
+  fact: "every advertised gzip bundle size equals the measured one"
+  sites:
+    # The measured truth — a command, not a file. Runs esbuild against src, so it
+    # needs no build step. `write: manual` (you cannot write into a measurement).
+    - locator:
+        kind: command
+        run: "node packages/core/scripts/bundle-size.mjs --src --json"
+        extract: { regex: '"kb"\s*:\s*(\d+)', all: true }   # the set of rounded kB
+      write: manual
+    # The advertised copies — set-valued: every `~NN kB` token in the file.
+    - artifact: README.md
+      locator: { kind: pattern, match: '~(?:\s|&nbsp;|%20)*(\d+)(?:\s|&nbsp;|%20)*kB', all: true }
+      write: managed
+    - artifact: packages/core/README.md
+      locator: { kind: pattern, match: '~(?:\s|&nbsp;|%20)*(\d+)(?:\s|&nbsp;|%20)*kB', all: true, allow: [64, 20] }
+      write: managed
+  policy: { severity: block, mode: propose }   # detect-and-report; never auto-rewrites a set
+  origin: declared                              # command sites are declared-only — never discovered
+```
+
+`allow` drops figures that legitimately sit next to the gzip number but are not it
+(here the core README also cites `~64 kB` raw and `~20 kB` brotli). Set-equality is
+agreement, so the order and duplication of the quotes do not matter. When the
+measurement moves, `yakir check` blocks and shows each stale file → the measured set;
+because the tether is measured, yakir reports rather than rewriting the prose.
+
 ## Notes on the schema
 
 - `locator.kind` is the pluggable anchor strategy: `region` (explicit markers),
-  `json-pointer` / `ast` / `pattern` (invisible, deterministic), `semantic`
-  (invisible, AI-resolved — ships with the semantic tier).
+  `json-pointer` / `ast` / `pattern` (invisible, deterministic), `command`
+  (executable tier — measures via a shell command), `semantic` (invisible,
+  AI-resolved — ships with the semantic tier).
+- `pattern` is set-valued with `all: true`: the value is the sorted-unique set of
+  every first-capture match, minus any `allow` entries. Sets reconcile by
+  set-equality and are never auto-written.
+- `command` runs a shell command and extracts from stdout — `{ json: "/ptr" }`,
+  `{ regex: "…(cap)…" }`, or `{ regex, all: true, allow }` for the set of all
+  matches. **Security:** a command runs arbitrary shell, so it is *declared-only* —
+  `discover` never proposes one and never executes one. `artifact` is omitted (it
+  anchors to a computation, not a file).
 - `write` defaults to `manual`. Earning `managed` is the per-site trust ratchet.
 - `check` is only needed when the tier is not plain token equality; it names a BYO
   runner (twoslash, link-resolver, judge…).

@@ -13,7 +13,9 @@ export {
   getRegion,
   setRegion,
   getPattern,
+  getPatternAll,
   setPattern,
+  canonicalSet,
   escapeRegExp,
 } from "./locators";
 export { walkFiles, findValueSites, seedValuesForTether } from "./discover";

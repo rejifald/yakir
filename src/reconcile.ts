@@ -1,5 +1,5 @@
 import type { Tether } from "./spec";
-import { siteKey, siteWrite } from "./spec";
+import { siteKey, siteWrite, siteLabel, isMeasuredOrSet } from "./spec";
 import type { Site } from "./spec";
 import { fingerprint } from "./fingerprint";
 import type { Extracted } from "./extract";
@@ -16,6 +16,8 @@ export type Diagnosis =
   | { kind: "fresh"; nextBaseline: TetherBaseline }
   | { kind: "rebased"; nextBaseline: TetherBaseline; commonValue: string }
   | { kind: "autofix"; nextBaseline: TetherBaseline; winner: string; writes: WriteAction[] }
+  /** Drift in a measured/set tether: detected and reported, never auto-written. */
+  | { kind: "report"; reason: string; winner: string; writes: WriteAction[] }
   | { kind: "blocked"; reason: string; writes: WriteAction[] }
   | { kind: "conflict"; reason: string; values: string[] }
   | { kind: "disagree"; reason: string; values: string[] }
@@ -39,7 +41,7 @@ export function diagnose(
   const problems: string[] = [];
   for (const s of sites) {
     const ex = extracted.get(siteKey(s));
-    if (!ex || ex.error) problems.push(`${s.artifact}: ${ex?.error ?? "no extraction"}`);
+    if (!ex || ex.error) problems.push(`${siteLabel(s)}: ${ex?.error ?? "no extraction"}`);
   }
   if (problems.length > 0) return { kind: "integrity", problems };
 
@@ -94,6 +96,16 @@ export function diagnose(
       from: values.get(siteKey(s)),
       to: winner,
     }));
+    // Measured/set tethers are detect-and-report: never auto-rewrite a measured
+    // value or a set of numbers in prose. The drift is still surfaced (and blocking).
+    if (sites.some(isMeasuredOrSet)) {
+      return {
+        kind: "report",
+        winner,
+        writes,
+        reason: `measured value is "${winner}"; ${writes.length} site(s) disagree — re-measure and update`,
+      };
+    }
     const manualTarget = lagging.some((s) => siteWrite(s) === "manual");
     const discovered = (tether.origin ?? "declared") === "discovered";
     if (manualTarget) {

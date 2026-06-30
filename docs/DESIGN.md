@@ -96,7 +96,11 @@ Case-3 propagation is fully mechanical only at the token tier. The distributed
 model degrades gracefully:
 
 - **token** — write the winning literal value into the other sites.
-- **executable** — regenerate the derived sites from their inputs.
+- **executable** — regenerate the derived sites from their inputs. In v1 the
+  executable tier is **detect-and-report**: a measured fact (a `command` site) or a
+  **set** of values is never mechanically rewritten into prose — the drift is
+  surfaced as a blocking finding and a human re-measures / updates. (Mechanical
+  regeneration of a derived site is a later enhancement on the same tier.)
 - **semantic** — there is no single value to copy. Re-judge the other sites for
   consistency with the change, and route any inconsistency to a drafted patch /
   issue. yakir never auto-writes prose.
@@ -110,6 +114,15 @@ A tether declares a tier; yakir guards it with the cheapest mechanism that fits.
 | **token** | a literal value (version, symbol, flag, count) | extract both sides, compare | write the winner into managed sites |
 | **executable** | true only if something runs (a fence type-checks, a link resolves, an example's output matches, an export is documented) | run it | regenerate the derived site |
 | **semantic** | a claim whose truth needs meaning ("this post still matches the API") | a **diff-aware** AI/human judge | draft a PR + the triggering diff; never auto-write |
+
+The executable tier's first mechanism is a **`command` source**: a site whose value
+is *measured* by running a shell command (`node:child_process`) and pulling a value
+from its stdout — a JSON path, a regex capture group, or the **set** of all matches.
+The value is computed, not read, which is exactly what lets yakir guard a fact that
+only a build step knows (a bundle's gzip size, a generated row count). Because a
+command runs arbitrary shell, it is **declared-only**: `discover` never proposes one
+and never executes one (§8). A tether that carries a command site — or any
+set-valued site — is detect-and-report (§4), `severity: block`, `mode: propose`.
 
 Two rules make the semantic tier trustworthy enough to act on:
 
@@ -133,6 +146,11 @@ consumer picks per site. Neither is privileged.
 v1 ships explicit-region + structured-path (both deterministic). Semantic
 selectors arrive with the semantic tier. Strategies are pluggable
 `AnchorResolver`s, so adding more is additive.
+
+The executable tier adds one locator that does not *read* a region at all: a
+**`command`** site measures its value by running a command and extracting from
+stdout. It anchors to a computation rather than a span — the same `(locator,
+extractor)` shape, with the artifact being a process instead of a file.
 
 ## 7. Auto-write capability and the trust ratchet
 
@@ -227,9 +245,13 @@ third parties interoperate.
 
 1. **Spec + engine + token tier.** Explicit-region + structured-path anchors,
    declared door, `yakir.lock` with fix/accept. Dogfood on a real library's
-   rename drift.
-2. **Executable tier** (type-check fences, link resolution, output match) +
-   **discovered door** (scanner + proposals).
+   rename drift. ✅ shipped, plus the **discovered door** (value-seeded scanner).
+2. **Executable tier.** ✅ shipped as a **`command` source** (output match: JSON
+   path / regex capture / set-of-all-matches) and **set-valued** tethers
+   (`pattern` with `all` + `allow`), reconciled by set-equality and routed
+   detect-and-report. Dogfooded on StitchAPI's advertised-bundle-size drift: a
+   command measures the gzip size; five docs must quote it. Type-check fences and
+   link resolution are future BYO runners on this same tier.
 3. **Semantic tier** (diff-aware judge, BYO model) + semantic anchors + captured
    door.
 4. **CI gate hardening** — baseline ratchet, severity policy — adoptable on a repo
