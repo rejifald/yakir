@@ -72,9 +72,9 @@ steps:
   - uses: actions/checkout@v4
   - uses: actions/setup-node@v4
     with: { node-version: 22 }
-  - run: npx @rejifald/yakir check   # once published (the npm package is scoped)
+  - run: npx --yes ./tools/yakir.tgz check   # vendored tarball
 ```
 
-`pnpm build` bundles a self-contained `dist/cli.mjs` (zero deps, runs on plain
-`node dist/cli.mjs check`). Before publishing you can vendor that one file into a
-repo, or run from git with `pnpm dlx github:<owner>/yakir check`.
+Not on npm yet (the bare name is pending review). `npm pack` produces a
+self-contained `yakir-<version>.tgz` (zero runtime deps) — vendor it and run as
+above, or run the bundle directly with `node dist/cli.mjs check` after `pnpm build`.

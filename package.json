@@ -1,5 +1,5 @@
 {
-  "name": "@rejifald/yakir",
+  "name": "yakir",
   "version": "0.1.0",
   "type": "module",
   "description": "Drift-prevention framework — keep distributed facts in sync.",

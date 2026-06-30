@@ -31,3 +31,6 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+
+# packed tarball (build artifact)
+*.tgz
