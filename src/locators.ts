@@ -36,12 +36,12 @@ export function setJsonPointer(doc: unknown, pointer: string, value: unknown): b
 
 // ---------- Region markers: <!-- tether:NAME --> ... <!-- /tether --> ----------
 
-function escapeRe(s: string): string {
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function regionRe(name: string): RegExp {
-  const n = escapeRe(name);
+  const n = escapeRegExp(name);
   return new RegExp(`(<!--\\s*tether:${n}\\s*-->)([\\s\\S]*?)(<!--\\s*/tether(?::${n})?\\s*-->)`);
 }
 

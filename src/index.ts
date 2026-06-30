@@ -14,4 +14,7 @@ export {
   setRegion,
   getPattern,
   setPattern,
+  escapeRegExp,
 } from "./locators";
+export { walkFiles, findValueSites, seedValuesForTether } from "./discover";
+export type { Candidate, WalkOptions, DiscoverOptions } from "./discover";
