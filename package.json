@@ -1,5 +1,5 @@
 {
-  "name": "tether",
+  "name": "yakir",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.33.2",
   "bin": {
-    "tether": "./dist/cli.mjs"
+    "yakir": "./dist/cli.mjs"
   },
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit",
     "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.mjs --banner:js=\"#!/usr/bin/env node\" && esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.mjs && tsc -p tsconfig.build.json && chmod +x dist/cli.mjs",
     "prepublishOnly": "pnpm build",
-    "tether": "tsx src/cli.ts"
+    "yakir": "tsx src/cli.ts"
   },
   "publishConfig": {
     "access": "public"

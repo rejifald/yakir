@@ -1,4 +1,4 @@
-# Tether — Design
+# yakir — Design
 
 > Status: design / pre-implementation. This document is the agreed shape for v1.
 > The engine, CLI, and lockfile do not exist yet; building them is the next step.
@@ -20,7 +20,7 @@ boundaries — code ↔ README ↔ docs ↔ blog ↔ generated files — you usu
 import; the value gets copied or derived, and the copy goes stale.
 
 The core observation: you cannot continuously *prove* that two prose artifacts
-agree. But you can *watch when one changes* and reconcile from there. Tether is a
+agree. But you can *watch when one changes* and reconcile from there. yakir is a
 build system for that — a dependency graph over facts, where the "rebuild" step is
 sometimes deterministic and sometimes a human or AI judgment.
 
@@ -46,15 +46,15 @@ A **tether** binds a set of co-equal **sites** that must all hold the same fact.
   hypergraph over sites), not a DAG — there are no directed edges to point.
 
 Direction is not a property of a tether. The only per-site asymmetry is a
-capability — *may Tether auto-write this site?* — described in §7. That is about
+capability — *may yakir auto-write this site?* — described in §7. That is about
 safety, not authority: a read-only site is not "the truth," it is just a site
-Tether will never edit on its own.
+yakir will never edit on its own.
 
 ## 3. Fingerprints and the lifecycle
 
 Each site carries a **fingerprint** of its current value. The last agreed
-fingerprints are stored as a **baseline** in `tether.lock`. Comparing current
-fingerprints to the baseline is what tells Tether *which* site moved — which is
+fingerprints are stored as a **baseline** in `yakir.lock`. Comparing current
+fingerprints to the baseline is what tells yakir *which* site moved — which is
 exactly what makes "the newest value is the truth" computable, and what lets the
 expensive semantic tier run only when a source actually changed.
 
@@ -63,12 +63,12 @@ A tether moves through three states:
 - **fresh** — every site matches the baseline. Nothing to do.
 - **suspect** — at least one site's fingerprint changed since the baseline. This
   triggers reconciliation (§4).
-- **drifted** — reconciliation could not resolve automatically. Tether raises a
+- **drifted** — reconciliation could not resolve automatically. yakir raises a
   non-auto-fixable issue, resolved by a human two ways:
   - **Fix** — change the offending site(s) until they agree again.
   - **Accept** — re-baseline to the current state without editing anything, the
     human asserting "these now agree." (See §9; accepts are reviewable writes to
-    `tether.lock`.)
+    `yakir.lock`.)
 
 ## 4. Reconciliation
 
@@ -82,7 +82,7 @@ them to the baseline. Partition the sites and act:
 3. **Exactly one new value** (one or more sites moved to it; the rest still match
    the baseline) → that value is the new truth. Propagate it to the other sites
    (subject to the auto-write capability, §7) and re-baseline. → `fresh`.
-4. **Two or more _different_ new values** → a genuine conflict. Tether cannot pick
+4. **Two or more _different_ new values** → a genuine conflict. yakir cannot pick
    a winner. → `drifted`: raise the issue for a human. (Optionally, git history
    *suggests* the most-recently-edited site as the likely winner — a suggestion in
    the issue, never an auto-applied choice.)
@@ -99,11 +99,11 @@ model degrades gracefully:
 - **executable** — regenerate the derived sites from their inputs.
 - **semantic** — there is no single value to copy. Re-judge the other sites for
   consistency with the change, and route any inconsistency to a drafted patch /
-  issue. Tether never auto-writes prose.
+  issue. yakir never auto-writes prose.
 
 ## 5. Tiers
 
-A tether declares a tier; Tether guards it with the cheapest mechanism that fits.
+A tether declares a tier; yakir guards it with the cheapest mechanism that fits.
 
 | tier | the fact is | check | auto-resolution |
 | --- | --- | --- | --- |
@@ -138,13 +138,13 @@ selectors arrive with the semantic tier. Strategies are pluggable
 
 The only per-site asymmetry. Each site is either:
 
-- **managed** — Tether may auto-write it (README badges, generated files), or
-- **manual** — Tether may only read it (source code, `package.json`).
+- **managed** — yakir may auto-write it (README badges, generated files), or
+- **manual** — yakir may only read it (source code, `package.json`).
 
 Default is **manual**. A site *earns* `managed` once you trust the binding — the
 same "earn auto-fix" ratchet used for counted lint suppressions. Reconciliation
 (§4 case 3) only propagates *into* managed sites; if the winning value would have
-to land in a manual site, Tether cannot auto-fix and raises the non-auto-fixable
+to land in a manual site, yakir cannot auto-fix and raises the non-auto-fixable
 issue instead.
 
 This is what makes "no source" safe. Example: a tether over
@@ -165,7 +165,7 @@ sets default trust:
   groupings). Proposals land **unconfirmed**: they warn, but never auto-fix until
   a human accepts them into the inventory. This is the defense against
   under-coverage — the fact you forgot to register is the one that bites.
-- **captured** — recorded when an artifact is generated *through* Tether. The
+- **captured** — recorded when an artifact is generated *through* yakir. The
   inputs are known exactly at generation time, so anchoring is perfect and the
   derived site is `managed` by construction. The encouraged path for anything you
   generate (`llms.txt`, injected snippets, templated READMEs).
@@ -175,14 +175,14 @@ or discover which sites form one fact.
 
 ## 9. The lockfile
 
-One **`tether.lock` per repository**. One entry per tether, holding the agreed
+One **`yakir.lock` per repository**. One entry per tether, holding the agreed
 baseline value/fingerprint and each site's individual fingerprint (needed to tell
 which site moved in §4). It is committed and reviewed like any other lockfile.
 
 - **Accept is per-tether.** You accept a fact's new state across all its sites in
   one gesture — exactly right for a rename: one accept settles every site that
   mentioned the old name.
-- Every accept is a write to `tether.lock` (new fingerprints + who/when/why), so it
+- Every accept is a write to `yakir.lock` (new fingerprints + who/when/why), so it
   shows up as a diff in the PR and is reviewed — never a silent rubber-stamp. The
   next drift is then measured against the accepted state.
 
@@ -194,14 +194,14 @@ drift hides.
 
 Every automatic action — a silent re-baseline (§4 case 2), a token auto-fix, a
 regeneration — emits a structured log event at a level. The default configuration
-keeps the routine ones quiet; raising verbosity surfaces them. The `tether.lock`
+keeps the routine ones quiet; raising verbosity surfaces them. The `yakir.lock`
 diff is the **permanent** audit trail regardless of log level: logs are the
 ephemeral view, the lockfile is the record.
 
 ## 11. Self-integrity (meta-drift)
 
 The inventory can itself drift — a locator points at a region that moved or
-vanished. Tether re-validates every site's anchor on each run; a dangling locator
+vanished. yakir re-validates every site's anchor on each run; a dangling locator
 is its own finding class ("inventory integrity"), surfaced as a fixable issue. The
 system watches itself, so it cannot silently rot into false confidence.
 
@@ -212,9 +212,9 @@ three separate products.
 
 ```
 Layer 3  GitHub App / bot          later — ambient loop; cross-repo & repo-to-world
-Layer 2  CLI + CI gate (ratchet)   v1 — check / scan / fix / accept / watch + tether.lock
+Layer 2  CLI + CI gate (ratchet)   v1 — check / scan / fix / accept / watch + yakir.lock
 Layer 1  Engine (zero-dep lib)     v1 — fingerprint · staleness · BYO tier & anchor resolvers
-Layer 0  Tether spec               v1 — tethers, sites, tiers, policy — serializes to JSON
+Layer 0  yakir spec               v1 — tethers, sites, tiers, policy — serializes to JSON
 ```
 
 The engine carries **zero runtime dependencies**; the AI judge and any
@@ -226,7 +226,7 @@ third parties interoperate.
 ## 13. Milestones
 
 1. **Spec + engine + token tier.** Explicit-region + structured-path anchors,
-   declared door, `tether.lock` with fix/accept. Dogfood on a real library's
+   declared door, `yakir.lock` with fix/accept. Dogfood on a real library's
    rename drift.
 2. **Executable tier** (type-check fences, link resolution, output match) +
    **discovered door** (scanner + proposals).
@@ -244,7 +244,7 @@ third parties interoperate.
   file, or both? (See `manifest-sketch.md`.)
 - **Severity policy vocabulary:** `block` / `warn` / `annotate` per tether, and how
   a CI gate maps them to exit codes.
-- **Package name:** the project is *Tether*; the npm name `tether` is taken, so the
+- **Package name:** the project is *yakir*; the npm name `tether` is taken, so the
   published package needs a scope or a different name.
 
 ## 15. Prior art to situate against
@@ -253,6 +253,6 @@ Build graphs (Make, Bazel, Turborepo, Salsa) — fingerprint + staleness, the
 intellectual ancestor. Snippet injectors (cog, embedme, markdown-magic). Doc tests
 (doctest, Rust doctests, twoslash). Link checkers (lychee). Version/dep sync
 (syncpack, changesets, release-please). Drift-against-world (Renovate, Dependabot).
-Each owns one tier or one topology. Tether's wedge is the **unified inventory
+Each owns one tier or one topology. yakir's wedge is the **unified inventory
 across all three tiers with one staleness-and-policy model** — and the
 distributed, sourceless reconciliation.

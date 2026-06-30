@@ -83,9 +83,9 @@ export function check(manifest: Manifest, root: string, lock: Lockfile): Report 
       case "fresh":
         return finding(t, "fresh", "in sync", []);
       case "rebased":
-        return finding(t, "rebased", `all sites agree on "${d.commonValue}"; baseline is behind (run \`tether fix\`)`, []);
+        return finding(t, "rebased", `all sites agree on "${d.commonValue}"; baseline is behind (run \`yakir fix\`)`, []);
       case "autofix":
-        return finding(t, "drifted", `auto-fixable: propagate "${d.winner}" to ${d.writes.length} site(s) (run \`tether fix\`)`, d.writes);
+        return finding(t, "drifted", `auto-fixable: propagate "${d.winner}" to ${d.writes.length} site(s) (run \`yakir fix\`)`, d.writes);
       case "blocked":
         return finding(t, "drifted", d.reason, d.writes);
       case "conflict":
@@ -148,7 +148,7 @@ export function accept(
       return finding(t, d.kind, `cannot accept while sites disagree (${values(d)}); fix them first`, []);
     }
     if (d.kind !== "fresh" && d.kind !== "rebased") {
-      return finding(t, "disagree", "sites currently differ; run `tether fix` or reconcile them before accepting", []);
+      return finding(t, "disagree", "sites currently differ; run `yakir fix` or reconcile them before accepting", []);
     }
     const next = d.nextBaseline;
     next.accepted = { ...(opts.meta ?? {}) };

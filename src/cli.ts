@@ -21,8 +21,8 @@ interface Args {
 function parseArgs(argv: string[]): Args {
   const a: Args = {
     cmd: argv[0] ?? "check",
-    manifest: "tether.json",
-    lock: "tether.lock",
+    manifest: "yakir.json",
+    lock: "yakir.lock",
     root: ".",
     values: [],
     rest: [],
@@ -169,7 +169,7 @@ function main(): void {
     default:
       console.error(
         `unknown command: ${args.cmd}\n` +
-          `usage: tether <check|fix|accept|discover|init> [--manifest f] [--lock f] [--root d] [--value v]`,
+          `usage: yakir <check|fix|accept|discover|init> [--manifest f] [--lock f] [--root d] [--value v]`,
       );
       process.exit(2);
       return;

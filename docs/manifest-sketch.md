@@ -1,4 +1,4 @@
-# Tether manifest — format sketch
+# yakir manifest — format sketch
 
 > A sketch, not a frozen schema. The canonical serialization is JSON (it must
 > round-trip as data); a typed TS authoring surface that compiles to that JSON is
@@ -27,7 +27,7 @@ tethers:
     origin: declared               # declared | discovered | captured
 ```
 
-`tether.lock` (generated, committed) holds the baseline that reconciliation
+`yakir.lock` (generated, committed) holds the baseline that reconciliation
 compares against:
 
 ```yaml
@@ -60,7 +60,7 @@ types. The fact is *the example compiles and exposes the symbols it shows*.
   sites:
     - artifact: apps/docs/content/quickstart.md
       locator: { kind: region, name: quickstart-example }
-      write: managed               # Tether can re-run twoslash and update rendered output
+      write: managed               # yakir can re-run twoslash and update rendered output
   check: { kind: twoslash }        # BYO runner
   policy: { severity: block, mode: propose }
   origin: declared
@@ -68,7 +68,7 @@ types. The fact is *the example compiles and exposes the symbols it shows*.
 
 The tether is effectively single-site against an *implicit* peer — the type
 surface it compiles against. When the API changes and the fence stops compiling,
-the check fails and Tether proposes the fix.
+the check fails and yakir proposes the fix.
 
 ### 3. The `value` → `token` rename — token + semantic
 
