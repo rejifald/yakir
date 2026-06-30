@@ -68,11 +68,17 @@ baseline:
 
 ```yaml
 # .github/workflows/drift.yml
-steps:
-  - uses: actions/checkout@v4
-  - uses: actions/setup-node@v4
-    with: { node-version: 22 }
-  - run: npx --yes ./tools/yakir.tgz check   # vendored tarball
+on: [push, pull_request]
+permissions:
+  contents: read          # least privilege — the check only reads
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npx --yes ./tools/yakir.tgz check   # vendored tarball
 ```
 
 Not on npm yet (the bare name is pending review). `npm pack` produces a
