@@ -1,10 +1,32 @@
 {
   "name": "yakir",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "Drift-prevention framework — keep distributed facts in sync.",
   "license": "Apache-2.0",
+  "author": "Oleksandr Zhuravlov (https://github.com/rejifald)",
+  "homepage": "https://github.com/rejifald/yakir#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rejifald/yakir.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rejifald/yakir/issues"
+  },
+  "keywords": [
+    "drift",
+    "drift-detection",
+    "documentation",
+    "docs",
+    "sync",
+    "consistency",
+    "ci",
+    "monorepo",
+    "single-source-of-truth"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "packageManager": "pnpm@10.33.2",
   "bin": {
     "yakir": "./dist/cli.mjs"
