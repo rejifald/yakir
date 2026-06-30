@@ -72,7 +72,7 @@ steps:
   - uses: actions/checkout@v4
   - uses: actions/setup-node@v4
     with: { node-version: 22 }
-  - run: npx yakir check        # once published (yakir is free unscoped on npm)
+  - run: npx @rejifald/yakir check   # once published (the npm package is scoped)
 ```
 
 `pnpm build` bundles a self-contained `dist/cli.mjs` (zero deps, runs on plain
