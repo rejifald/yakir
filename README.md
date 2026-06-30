@@ -93,3 +93,13 @@ jobs:
 Not on npm yet (the bare name is pending review). `npm pack` produces a
 self-contained `yakir-<version>.tgz` (zero runtime deps) — vendor it and run as
 above, or run the bundle directly with `node dist/cli.mjs check` after `pnpm build`.
+
+**Tier-scoped gates.** `check` / `fix` take `--tier <tier>` and `--only <id>` to run
+a subset. This matters for the executable tier: a `command` site needs whatever it
+measures (e.g. a built library), which a pre-commit hook usually can't provide. Run
+the build-free tiers early and the measured ones where a build exists:
+
+```sh
+yakir check --tier token   # pre-commit: literal facts only, no build needed
+yakir check                # CI / pre-push (after the build): every tier, measured
+```
