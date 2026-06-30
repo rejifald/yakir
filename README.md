@@ -34,6 +34,23 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 
 ## Status
 
-Pre-implementation. This repo currently holds the design. The v1 engine — token
-tier, CLI, and `tether.lock` — is the next step, to be dogfooded on a real
-library's drift.
+Milestone 1 (token tier) is implemented: the engine, the `check` / `fix` /
+`accept` / `init` CLI, three anchor strategies (`json-pointer`, `region`,
+`pattern`), and a `tether.lock` baseline. 19 tests green, `tsc --noEmit` clean.
+
+**Dogfood:** running `tether check` against the StitchAPI repo catches a real
+drift — the README says `1.0.0-rc.3` while the packages are at `1.0.0-rc.4`. See
+[examples/stitchapi-release-version.tether.json](examples/stitchapi-release-version.tether.json).
+
+Next: the executable tier (type-check `twoslash` fences, link resolution) and the
+discovered door (a scanner that proposes tethers).
+
+### Try it
+
+```sh
+pnpm install
+pnpm tether init      # write a starter tether.json
+pnpm tether check     # report drift (read-only; non-zero exit on blocking drift)
+pnpm tether fix       # apply token-tier auto-fixes and advance tether.lock
+pnpm tether accept <id>   # re-baseline a tether to the current state
+```

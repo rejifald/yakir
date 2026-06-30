@@ -1,0 +1,22 @@
+{
+  "tethers": [
+    {
+      "id": "release-version",
+      "tier": "token",
+      "fact": "the current published StitchAPI version",
+      "policy": { "severity": "block", "mode": "auto" },
+      "sites": [
+        {
+          "artifact": "packages/core/package.json",
+          "locator": { "kind": "json-pointer", "path": "/version" },
+          "write": "manual"
+        },
+        {
+          "artifact": "README.md",
+          "locator": { "kind": "pattern", "match": "StitchAPI is at `([^`]+)`" },
+          "write": "managed"
+        }
+      ]
+    }
+  ]
+}

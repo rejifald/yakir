@@ -1,0 +1,20 @@
+{
+  "name": "tether",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Drift-prevention framework — keep distributed facts in sync.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "tether": "tsx src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
