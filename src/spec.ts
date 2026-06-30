@@ -34,6 +34,8 @@ export interface Tether {
 
 export interface Manifest {
   tethers: Tether[];
+  /** Globs excluded from `discover` scanning. User-defined; added to the infra defaults. */
+  ignore?: string[];
 }
 
 /** Identity helper for typed TS authoring that compiles to the JSON manifest. */

@@ -33,11 +33,39 @@ const MAX_BYTES = 1_000_000;
 
 export interface WalkOptions {
   ignoreDirs?: Set<string>;
+  /** User-defined ignore globs (repo-relative), added on top of the infra defaults. */
+  ignoreGlobs?: string[];
   maxBytes?: number;
+}
+
+/** Minimal glob → RegExp: `**` spans path separators, `*` does not, `?` is one non-slash char. */
+function globToRegExp(glob: string): RegExp {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i]!;
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        re += ".*";
+        i++;
+        if (glob[i + 1] === "/") i++;
+      } else {
+        re += "[^/]*";
+      }
+    } else if (c === "?") {
+      re += "[^/]";
+    } else {
+      re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+  return new RegExp("^(?:" + re + ")$");
 }
 
 export function walkFiles(root: string, opts: WalkOptions = {}): string[] {
   const ignoreDirs = opts.ignoreDirs ?? IGNORE_DIRS;
+  const globs = (opts.ignoreGlobs ?? []).map(globToRegExp);
+  const rel = (p: string): string => relative(root, p).split(sep).join("/");
+  const ignored = (path: string): boolean => globs.some((re) => re.test(path));
+
   const out: string[] = [];
   const stack: string[] = [root];
   while (stack.length > 0) {
@@ -49,12 +77,17 @@ export function walkFiles(root: string, opts: WalkOptions = {}): string[] {
       continue;
     }
     for (const e of entries) {
+      const full = join(dir, e.name);
       if (e.isDirectory()) {
-        if (!ignoreDirs.has(e.name)) stack.push(join(dir, e.name));
+        if (ignoreDirs.has(e.name)) continue;
+        const r = rel(full);
+        if (ignored(r) || ignored(r + "/")) continue;
+        stack.push(full);
       } else if (e.isFile()) {
         if (IGNORE_FILES.has(e.name)) continue;
         if (BINARY_EXT.has(extname(e.name).toLowerCase())) continue;
-        out.push(join(dir, e.name));
+        if (ignored(rel(full))) continue;
+        out.push(full);
       }
     }
   }

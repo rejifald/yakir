@@ -129,7 +129,7 @@ function main(): void {
   const root = resolve(args.root);
 
   if (args.cmd === "discover") {
-    const manifest = existsSync(args.manifest) ? loadManifest(args.manifest) : { tethers: [] };
+    const manifest: Manifest = existsSync(args.manifest) ? loadManifest(args.manifest) : { tethers: [] };
     const lock = readLock(args.lock);
     const seeds = new Set<string>(args.values);
     let knownArtifacts = new Set<string>();
@@ -146,7 +146,7 @@ function main(): void {
       console.error("discover needs a tether id (to seed from its values) or one or more --value <v>");
       process.exit(2);
     }
-    printDiscover([...seeds], findValueSites(root, [...seeds], { knownArtifacts }));
+    printDiscover([...seeds], findValueSites(root, [...seeds], { knownArtifacts, ignoreGlobs: manifest.ignore }));
     return;
   }
 

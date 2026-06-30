@@ -6,13 +6,33 @@
   "description": "Drift-prevention framework — keep distributed facts in sync.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.33.2",
+  "bin": {
+    "tether": "./dist/cli.mjs"
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.mjs --banner:js=\"#!/usr/bin/env node\" && esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.mjs && tsc -p tsconfig.build.json && chmod +x dist/cli.mjs",
+    "prepublishOnly": "pnpm build",
     "tether": "tsx src/cli.ts"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "esbuild": "^0.28.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

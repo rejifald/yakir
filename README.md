@@ -53,4 +53,27 @@ pnpm tether init      # write a starter tether.json
 pnpm tether check     # report drift (read-only; non-zero exit on blocking drift)
 pnpm tether fix       # apply token-tier auto-fixes and advance tether.lock
 pnpm tether accept <id>   # re-baseline a tether to the current state
+pnpm tether discover <id> # sweep the repo for a fact's values, propose more sites
 ```
+
+Scope discovery with `ignore` globs in the manifest (e.g. `"ignore": ["CHANGELOG.md"]`) —
+Tether ships no opinionated content ignores of its own.
+
+## Use in CI
+
+`tether check` exits non-zero on blocking drift, so it drops straight into a gate.
+Commit `tether.json` and `tether.lock`; the check runs against the committed
+baseline:
+
+```yaml
+# .github/workflows/drift.yml
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with: { node-version: 22 }
+  - run: npx @scope/tether check        # once published under an npm scope
+```
+
+`pnpm build` bundles a self-contained `dist/cli.mjs` (zero deps, runs on plain
+`node dist/cli.mjs check`). Before publishing you can vendor that one file into a
+repo, or run from git with `pnpm dlx github:<owner>/tether check`.

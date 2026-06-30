@@ -48,4 +48,16 @@ describe("discover", () => {
     const c = findValueSites(root, ["1.0.0-rc.4"], { knownArtifacts: new Set(["package.json"]) });
     expect(c.find((x) => x.artifact === "package.json")?.existing).toBe(true);
   });
+
+  it("respects user-defined ignore globs", () => {
+    w("keep.md", "still 1.0.0-rc.3");
+    w("CHANGELOG.md", "## 1.0.0-rc.3");
+    w("docs/history/old.md", "1.0.0-rc.3");
+    expect(findValueSites(root, ["1.0.0-rc.3"]).some((c) => c.artifact === "CHANGELOG.md")).toBe(true);
+
+    const filtered = findValueSites(root, ["1.0.0-rc.3"], { ignoreGlobs: ["CHANGELOG.md", "docs/**"] });
+    expect(filtered.some((c) => c.artifact === "CHANGELOG.md")).toBe(false);
+    expect(filtered.some((c) => c.artifact === "docs/history/old.md")).toBe(false);
+    expect(filtered.some((c) => c.artifact === "keep.md")).toBe(true);
+  });
 });
