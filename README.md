@@ -32,6 +32,41 @@ reconcile from there.
 See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 [docs/manifest-sketch.md](docs/manifest-sketch.md) for the file format.
 
+## Examples
+
+The smallest useful tether — a version that can't drift between `package.json` and the
+README badge:
+
+```json
+{
+  "id": "package-version",
+  "tier": "token",
+  "policy": { "severity": "block", "mode": "auto" },
+  "sites": [
+    { "artifact": "package.json", "locator": { "kind": "json-pointer", "path": "/version" }, "write": "manual" },
+    { "artifact": "README.md",    "locator": { "kind": "region", "name": "version" },         "write": "managed" }
+  ]
+}
+```
+
+With `<!-- yakir:version -->1.4.2<!-- /yakir -->` in the README, a release that moves
+`package.json` lets `yakir fix` rewrite the badge — but a typo in the badge can never
+rewrite `package.json` (a `manual` site), so it becomes an issue instead of a silent
+corruption.
+
+[**docs/examples.md**](docs/examples.md) is a worked gallery that covers the rest:
+
+- a fact stated in **prose**, and a **rename** that sweeps every doc (token tier);
+- **version lockstep** and a shared **`engines`** floor across a monorepo — one glob
+  tether per fact, new packages covered automatically;
+- a **measured** bundle size vs. every `~NN kB` quote, and a compiled default vs. the
+  number in the docs (`command` source, executable tier);
+- a **generated file** and a **generated README block** kept in step with their
+  generators (`file` / `region … whole` vs. the generator's output).
+
+Every tether there is copy-pasteable, and each is exercised against the CLI. Real,
+in-repo manifests live in [examples/](examples).
+
 ## Status
 
 Milestones 1–2 are implemented: the engine, the `check` / `fix` / `accept` /
