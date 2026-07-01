@@ -84,14 +84,16 @@ function tag(status: string): string {
 }
 
 /** Whole-file / whole-command values are content fingerprints; abbreviate them. */
+function abbrevHashes(s: string): string {
+  return s.replace(/sha256:[0-9a-f]{64}/g, (h) => `‹content ${h.slice(7, 17)}…›`);
+}
 function pretty(v: string | undefined): string {
-  if (v === undefined) return "(none)";
-  return /^sha256:[0-9a-f]{64}$/.test(v) ? `‹content ${v.slice(7, 17)}…›` : v;
+  return v === undefined ? "(none)" : abbrevHashes(v);
 }
 
 function printReport(report: Report): void {
   for (const f of report.findings) {
-    console.log(`${tag(f.status)}  ${f.tetherId}  —  ${f.message}`);
+    console.log(`${tag(f.status)}  ${f.tetherId}  —  ${abbrevHashes(f.message)}`);
     for (const w of f.writes) console.log(`           ${siteLabel(w.site)}: ${pretty(w.from)} -> ${pretty(w.to)}`);
   }
   const s = report.summary;
