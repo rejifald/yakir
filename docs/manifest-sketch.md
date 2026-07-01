@@ -21,7 +21,7 @@ tethers:
         locator: { kind: json-pointer, path: /version }
         write: manual              # manual (read-only) | managed (auto-writable)
       - artifact: README.md
-        locator: { kind: region, name: pkg-version }   # <!-- tether:pkg-version -->…<!-- /tether -->
+        locator: { kind: region, name: pkg-version }   # <!-- yakir:pkg-version -->…<!-- /yakir -->
         write: managed
     policy: { severity: block, mode: auto }   # block|warn|annotate · auto|propose
     origin: declared               # declared | discovered | captured

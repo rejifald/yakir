@@ -11,10 +11,10 @@ import {
 } from "../src/locators";
 
 describe("region markers", () => {
-  const text = "version: <!-- tether:ver -->1.0.0-rc.3<!-- /tether --> ok";
+  const text = "version: <!-- yakir:ver -->1.0.0-rc.3<!-- /yakir --> ok";
   it("extracts the inner value", () => expect(getRegion(text, "ver")).toBe("1.0.0-rc.3"));
   it("replaces only the inner span", () => {
-    expect(setRegion(text, "ver", "1.0.0-rc.4")).toBe("version: <!-- tether:ver -->1.0.0-rc.4<!-- /tether --> ok");
+    expect(setRegion(text, "ver", "1.0.0-rc.4")).toBe("version: <!-- yakir:ver -->1.0.0-rc.4<!-- /yakir --> ok");
   });
   it("returns undefined for a missing marker", () => expect(getRegion(text, "nope")).toBeUndefined());
 });

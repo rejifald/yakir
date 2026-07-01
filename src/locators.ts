@@ -34,7 +34,7 @@ export function setJsonPointer(doc: unknown, pointer: string, value: unknown): b
   return true;
 }
 
-// ---------- Region markers: <!-- tether:NAME --> ... <!-- /tether --> ----------
+// ---------- Region markers: <!-- yakir:NAME --> ... <!-- /yakir --> ----------
 
 export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -42,7 +42,7 @@ export function escapeRegExp(s: string): string {
 
 function regionRe(name: string): RegExp {
   const n = escapeRegExp(name);
-  return new RegExp(`(<!--\\s*tether:${n}\\s*-->)([\\s\\S]*?)(<!--\\s*/tether(?::${n})?\\s*-->)`);
+  return new RegExp(`(<!--\\s*yakir:${n}\\s*-->)([\\s\\S]*?)(<!--\\s*/yakir(?::${n})?\\s*-->)`);
 }
 
 export function getRegion(text: string, name: string): string | undefined {

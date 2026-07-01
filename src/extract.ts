@@ -55,7 +55,7 @@ export function extractSite(root: string, site: Site): Extracted {
   }
   if (l.kind === "region") {
     const v = getRegion(text, l.name);
-    if (v === undefined) return { value: undefined, error: `region marker not found: tether:${l.name}` };
+    if (v === undefined) return { value: undefined, error: `region marker not found: yakir:${l.name}` };
     return { value: v };
   }
   if (l.kind === "file") {
@@ -150,7 +150,7 @@ export function writeSite(root: string, site: Site, value: string): { ok: boolea
   }
   if (l.kind === "region") {
     const next = setRegion(text, l.name, value);
-    if (next === undefined) return { ok: false, error: `region marker not found: tether:${l.name}` };
+    if (next === undefined) return { ok: false, error: `region marker not found: yakir:${l.name}` };
     writeFileSync(abs, next);
     return { ok: true };
   }

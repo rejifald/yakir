@@ -137,7 +137,7 @@ A site's locator can use either of two strategies — both are first-class and a
 consumer picks per site. Neither is privileged.
 
 - **Explicit region** — a marked span, e.g.
-  `<!-- tether:pkg-version -->2.3.1<!-- /tether -->`. Robust, self-documenting,
+  `<!-- yakir:pkg-version -->2.3.1<!-- /yakir -->`. Robust, self-documenting,
   zero ambiguity; invasive. For consumers who want the binding visible.
 - **Invisible** — a pattern, a structured path (JSON pointer, AST query), or a
   semantic selector ("the sentence stating the minimum Node version"). Zero-touch
