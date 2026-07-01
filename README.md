@@ -37,8 +37,9 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 Milestones 1–2 are implemented: the engine, the `check` / `fix` / `accept` /
 `init` CLI, the `discover` scanner, a `yakir.lock` baseline, and two tiers.
 
-- **Token tier** — anchor strategies `json-pointer`, `region`, `pattern`, and
-  `file` (a whole file, by content fingerprint).
+- **Token tier** — anchor strategies `json-pointer`, `region` (marker span; with
+  `whole` its content by fingerprint), `pattern`, and `file` (a whole file, by
+  content fingerprint).
 - **Executable tier** — a **`command`** source whose value is *measured* by running
   a shell command and extracting from stdout (a JSON path, a regex capture, the
   **set** of all matches, or the **whole** output), plus **set-valued** `pattern`

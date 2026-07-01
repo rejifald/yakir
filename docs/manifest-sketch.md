@@ -188,10 +188,12 @@ stays small and trailing-newline noise is ignored):
 
 ## Notes on the schema
 
-- `locator.kind` is the pluggable anchor strategy: `region` (explicit markers),
-  `json-pointer` / `ast` / `pattern` (invisible, deterministic), `file` (the whole
-  file, by content fingerprint), `command` (executable tier — measures via a shell
-  command), `semantic` (invisible, AI-resolved — ships with the semantic tier).
+- `locator.kind` is the pluggable anchor strategy: `region` (explicit markers —
+  `<!-- yakir:NAME -->…<!-- /yakir -->`; with `whole: true` the region's content by
+  fingerprint, for a generated block), `json-pointer` / `ast` / `pattern` (invisible,
+  deterministic), `file` (the whole file, by content fingerprint), `command`
+  (executable tier — measures via a shell command), `semantic` (invisible,
+  AI-resolved — ships with the semantic tier).
 - `artifact` may be a **glob**; it expands to one co-equal site per matching file.
   `exclude` drops matches (e.g. private packages). A glob matching nothing is an
   integrity error.

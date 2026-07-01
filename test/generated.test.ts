@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Manifest, Site } from "../src/spec";
 import { extractSite, writeSite } from "../src/extract";
+import { fingerprint } from "../src/fingerprint";
 import { emptyLock } from "../src/lockfile";
 import { check } from "../src/engine";
 
@@ -36,6 +37,50 @@ describe("whole-file locator", () => {
   it("refuses to auto-write a whole-file site", () => {
     writeFileSync(join(root, "a.ts"), "x\n");
     expect(writeSite(root, { artifact: "a.ts", locator: { kind: "file" } }, "sha256:...").ok).toBe(false);
+  });
+});
+
+describe("whole-region locator (region + whole)", () => {
+  it("fingerprints the region content, normalising surrounding whitespace", () => {
+    writeFileSync(join(root, "R.md"), "pre\n<!-- yakir:blk -->\n\nhello world\n\n<!-- /yakir:blk -->\npost\n");
+    const site: Site = { artifact: "R.md", locator: { kind: "region", name: "blk", whole: true } };
+    expect(extractSite(root, site).value).toBe(fingerprint("hello world"));
+  });
+
+  it("refuses to auto-write a whole-region site", () => {
+    writeFileSync(join(root, "R.md"), "<!-- yakir:blk -->x<!-- /yakir:blk -->\n");
+    const site: Site = { artifact: "R.md", locator: { kind: "region", name: "blk", whole: true } };
+    expect(writeSite(root, site, "sha256:x").ok).toBe(false);
+  });
+});
+
+// A generated region: a README block must equal its generator's --emit output.
+function regionManifest(): Manifest {
+  return {
+    tethers: [
+      {
+        id: "readme-block",
+        tier: "executable",
+        policy: { severity: "block", mode: "propose" },
+        sites: [
+          { locator: { kind: "command", run: "node emit.mjs", extract: { whole: true } }, write: "manual" },
+          { artifact: "README.md", locator: { kind: "region", name: "blk", whole: true }, write: "managed" },
+        ],
+      },
+    ],
+  };
+}
+
+describe("generated region tether (region+whole ↔ command whole)", () => {
+  it("is fresh when the block matches the generator, drifts when stale", () => {
+    writeFileSync(join(root, "emit.mjs"), `process.stdout.write("MANAGED BODY");\n`);
+    writeFileSync(join(root, "README.md"), "# x\n<!-- yakir:blk -->\n\nMANAGED BODY\n\n<!-- /yakir:blk -->\n");
+    expect(check(regionManifest(), root, emptyLock()).findings[0]!.status).toBe("fresh");
+
+    writeFileSync(join(root, "README.md"), "# x\n<!-- yakir:blk -->\n\nHAND EDITED\n\n<!-- /yakir:blk -->\n");
+    const report = check(regionManifest(), root, emptyLock());
+    expect(report.findings[0]!.status).toBe("disagree");
+    expect(report.ok).toBe(false);
   });
 });
 

@@ -19,7 +19,12 @@ export type CommandExtract =
 
 export type Locator =
   | { kind: "json-pointer"; path: string }
-  | { kind: "region"; name: string }
+  /**
+   * The span between `<!-- yakir:NAME -->` and `<!-- /yakir -->`. With `whole: true`
+   * the value is the span's content fingerprint (for a generated block tethered to a
+   * `command` that emits it); without it, the raw inner text (a token).
+   */
+  | { kind: "region"; name: string; whole?: true }
   /**
    * A regexp whose first capture group is the value. With `all: true` the value is
    * the sorted-unique *set* of every match; `allow` drops listed values from that set.
@@ -90,7 +95,7 @@ export function siteKey(site: Site): string {
     case "json-pointer":
       return `${site.artifact}#${l.path}`;
     case "region":
-      return `${site.artifact}#region:${l.name}`;
+      return `${site.artifact}#region:${l.name}${l.whole ? ":whole" : ""}`;
     case "pattern":
       return `${site.artifact}#pattern:${l.match}${l.all ? ":all" : ""}`;
     case "file":
@@ -110,10 +115,13 @@ export function siteLabel(site: Site): string {
   return siteKey(site);
 }
 
-/** True for sites yakir never auto-rewrites: a measured command, a set, or a whole-file hash. */
+/** True for sites yakir never auto-rewrites: a measured command, a set, or a whole-content hash. */
 export function isMeasuredOrSet(site: Site): boolean {
   const l = site.locator;
-  return l.kind === "command" || l.kind === "file" || (l.kind === "pattern" && l.all === true);
+  if (l.kind === "command" || l.kind === "file") return true;
+  if (l.kind === "pattern" && l.all === true) return true;
+  if (l.kind === "region" && l.whole === true) return true;
+  return false;
 }
 
 export function siteWrite(site: Site): WriteCap {

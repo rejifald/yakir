@@ -15,9 +15,9 @@ import {
   canonicalSet,
 } from "./locators";
 
-/** Content fingerprint used to compare whole files / whole command output cheaply. */
+/** Content fingerprint used to compare whole files / regions / command output cheaply. */
 function contentFingerprint(text: string): string {
-  return fingerprint(text.replace(/\s+$/, "")); // normalise trailing whitespace (e.g. a console.log newline)
+  return fingerprint(text.trim()); // normalise surrounding whitespace (region trim, a console.log newline)
 }
 
 export interface Extracted {
@@ -56,7 +56,7 @@ export function extractSite(root: string, site: Site): Extracted {
   if (l.kind === "region") {
     const v = getRegion(text, l.name);
     if (v === undefined) return { value: undefined, error: `region marker not found: yakir:${l.name}` };
-    return { value: v };
+    return { value: l.whole ? contentFingerprint(v) : v };
   }
   if (l.kind === "file") {
     return { value: contentFingerprint(text) }; // whole file, by content fingerprint
@@ -130,6 +130,7 @@ export function writeSite(root: string, site: Site, value: string): { ok: boolea
   if (l.kind === "command") return { ok: false, error: "command sites are measured, not writable" };
   if (l.kind === "file") return { ok: false, error: "whole-file sites are compared by fingerprint, not writable" };
   if (l.kind === "pattern" && l.all) return { ok: false, error: "set-valued sites are not auto-written" };
+  if (l.kind === "region" && l.whole) return { ok: false, error: "whole-region sites are compared by fingerprint, not writable" };
 
   if (!site.artifact) return { ok: false, error: `site has no artifact for a ${l.kind} locator` };
   const abs = join(root, site.artifact);
