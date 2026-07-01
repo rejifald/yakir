@@ -73,3 +73,43 @@ describe("diagnose — token tier reconciliation", () => {
     expect(d.kind).toBe("blocked");
   });
 });
+
+describe("diagnose — measured / set tethers are report-only", () => {
+  const cmd: Site = {
+    locator: { kind: "command", run: "node measure.mjs", extract: { regex: "(\\d+)", all: true } },
+    write: "manual",
+  };
+  const prose: Site = { artifact: "README.md", locator: { kind: "pattern", match: "~(\\d+) kB", all: true }, write: "managed" };
+  const measured: Tether = { id: "bundle-size", tier: "executable", sites: [cmd, prose] };
+
+  function mext(cmdSet: string, proseSet: string): Map<string, Extracted> {
+    const m = new Map<string, Extracted>();
+    m.set(siteKey(cmd), { value: cmdSet });
+    m.set(siteKey(prose), { value: proseSet });
+    return m;
+  }
+  function mbase(value: string): TetherBaseline {
+    return {
+      baseline: value,
+      sites: {
+        [siteKey(cmd)]: { value, fp: fingerprint(value) },
+        [siteKey(prose)]: { value, fp: fingerprint(value) },
+      },
+      accepted: null,
+    };
+  }
+
+  it("a lone new value reports (does not auto-fix) when a measured site is present", () => {
+    const d = diagnose(measured, mext("19, 24", "19, 23"), mbase("19, 23"));
+    expect(d.kind).toBe("report");
+    if (d.kind === "report") {
+      expect(d.winner).toBe("19, 24");
+      expect(d.writes).toHaveLength(1);
+      expect(d.writes[0]!.site.artifact).toBe("README.md");
+    }
+  });
+
+  it("set-equality counts as agreement → fresh", () => {
+    expect(diagnose(measured, mext("19, 23", "19, 23"), mbase("19, 23")).kind).toBe("fresh");
+  });
+});

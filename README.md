@@ -32,19 +32,69 @@ reconcile from there.
 See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 [docs/manifest-sketch.md](docs/manifest-sketch.md) for the file format.
 
+## Examples
+
+The smallest useful tether — a version that can't drift between `package.json` and the
+README badge:
+
+```json
+{
+  "id": "package-version",
+  "tier": "token",
+  "policy": { "severity": "block", "mode": "auto" },
+  "sites": [
+    { "artifact": "package.json", "locator": { "kind": "json-pointer", "path": "/version" }, "write": "manual" },
+    { "artifact": "README.md",    "locator": { "kind": "region", "name": "version" },         "write": "managed" }
+  ]
+}
+```
+
+With `<!-- yakir:version -->1.4.2<!-- /yakir -->` in the README, a release that moves
+`package.json` lets `yakir fix` rewrite the badge — but a typo in the badge can never
+rewrite `package.json` (a `manual` site), so it becomes an issue instead of a silent
+corruption.
+
+[**docs/examples.md**](docs/examples.md) is a worked gallery that covers the rest:
+
+- a fact stated in **prose**, and a **rename** that sweeps every doc (token tier);
+- **version lockstep** and a shared **`engines`** floor across a monorepo — one glob
+  tether per fact, new packages covered automatically;
+- a **measured** bundle size vs. every `~NN kB` quote, and a compiled default vs. the
+  number in the docs (`command` source, executable tier);
+- a **generated file** and a **generated README block** kept in step with their
+  generators (`file` / `region … whole` vs. the generator's output).
+
+Every tether there is copy-pasteable, and each is exercised against the CLI. Real,
+in-repo manifests live in [examples/](examples).
+
 ## Status
 
-Milestone 1 (token tier) is implemented: the engine, the `check` / `fix` /
-`accept` / `init` CLI, the `discover` scanner, three anchor strategies
-(`json-pointer`, `region`, `pattern`), and a `yakir.lock` baseline. 23 tests
-green, `tsc --noEmit` clean, zero runtime dependencies.
+Milestones 1–2 are implemented: the engine, the `check` / `fix` / `accept` /
+`init` CLI, the `discover` scanner, a `yakir.lock` baseline, and two tiers.
 
-**Dogfood:** running `yakir check` against the StitchAPI repo catches real drift —
-the README claims `1.0.0-rc.3` while the packages are at `1.0.0-rc.4` — and
-`yakir discover` finds every other place those versions live. See
+- **Token tier** — anchor strategies `json-pointer`, `region` (marker span; with
+  `whole` its content by fingerprint), `pattern`, and `file` (a whole file, by
+  content fingerprint).
+- **Executable tier** — a **`command`** source whose value is *measured* by running
+  a shell command and extracting from stdout (a JSON path, a regex capture, the
+  **set** of all matches, or the **whole** output), plus **set-valued** `pattern`
+  sites (`all` + `allow`) reconciled by set-equality. Measured/set/whole-file
+  tethers are detect-and-report — yakir never auto-rewrites a measurement, a set, or
+  a generated file in place. A command runs arbitrary shell, so it is
+  **declared-only**: `discover` never proposes or runs one.
+- **Glob sites** — a site's `artifact` may be a glob (`packages/*/package.json`); it
+  expands to one co-equal site per matching file (with `exclude`), so one tether
+  guards a fact across an entire monorepo and covers new packages automatically.
+
+53 tests green, `tsc --noEmit` clean, zero runtime dependencies.
+
+**Dogfood:** running `yakir check` against the StitchAPI repo catches real drift in
+both tiers — a README version that lags `package.json` (token), and five files that
+advertise a `~24 kB` bundle the build now measures at `~23 kB` (executable). See
 [examples/stitchapi-release-version.yakir.json](examples/stitchapi-release-version.yakir.json).
 
-Next: the executable tier (type-check `twoslash` fences, link resolution).
+Next: the semantic tier (diff-aware judge, BYO model); type-check `twoslash` fences
+and link resolution as further executable-tier runners.
 
 ### Try it
 
@@ -84,3 +134,13 @@ jobs:
 Not on npm yet (the bare name is pending review). `npm pack` produces a
 self-contained `yakir-<version>.tgz` (zero runtime deps) — vendor it and run as
 above, or run the bundle directly with `node dist/cli.mjs check` after `pnpm build`.
+
+**Tier-scoped gates.** `check` / `fix` take `--tier <tier>` and `--only <id>` to run
+a subset. This matters for the executable tier: a `command` site needs whatever it
+measures (e.g. a built library), which a pre-commit hook usually can't provide. Run
+the build-free tiers early and the measured ones where a build exists:
+
+```sh
+yakir check --tier token   # pre-commit: literal facts only, no build needed
+yakir check                # CI / pre-push (after the build): every tier, measured
+```

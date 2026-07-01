@@ -33,7 +33,7 @@ function writePkg(v: string): void {
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "x", version: v }, null, 2) + "\n");
 }
 function writeReadme(v: string): void {
-  writeFileSync(join(root, "README.md"), `# x\n\nAt <!-- tether:ver -->${v}<!-- /tether --> now.\n`);
+  writeFileSync(join(root, "README.md"), `# x\n\nAt <!-- yakir:ver -->${v}<!-- /yakir --> now.\n`);
 }
 function readmeText(): string {
   return readFileSync(join(root, "README.md"), "utf8");

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, extname, sep } from "node:path";
 import type { Locator, Tether } from "./spec";
+import { isGlobArtifact } from "./spec";
 import { escapeRegExp } from "./locators";
 import type { Lockfile } from "./lockfile";
 import { extractSite } from "./extract";
@@ -8,6 +9,11 @@ import { extractSite } from "./extract";
 // Value-seeded discovery: given a fact's known values, sweep the repo for every
 // other place those values appear. Occurrences holding a *stale* value are
 // exactly the under-covered drift a hand-written manifest would miss.
+//
+// SECURITY: discovery is file-only. It proposes only json-pointer/pattern
+// sites (never a `command`), and it never *executes* a command site when seeding
+// from a tether — a command runs arbitrary shell, so it stays strictly
+// declared-only (you opt in by hand-writing it in the manifest).
 
 const IGNORE_DIRS = new Set([
   ".git",
@@ -39,7 +45,7 @@ export interface WalkOptions {
 }
 
 /** Minimal glob → RegExp: `**` spans path separators, `*` does not, `?` is one non-slash char. */
-function globToRegExp(glob: string): RegExp {
+export function globToRegExp(glob: string): RegExp {
   let re = "";
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i]!;
@@ -176,6 +182,12 @@ export function findValueSites(root: string, values: string[], opts: DiscoverOpt
 export function seedValuesForTether(root: string, tether: Tether, lock?: Lockfile): string[] {
   const vals = new Set<string>();
   for (const s of tether.sites) {
+    // Never run a command to seed discovery (declared-only boundary); skip set-valued
+    // and whole-file sites (their canonical string / fingerprint is not a searchable
+    // value); skip glob artifacts (they don't name a single file).
+    if (s.locator.kind === "command" || s.locator.kind === "file") continue;
+    if (s.locator.kind === "pattern" && s.locator.all) continue;
+    if (isGlobArtifact(s.artifact)) continue;
     const ex = extractSite(root, s);
     if (ex.value !== undefined) vals.add(ex.value);
   }

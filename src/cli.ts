@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Manifest } from "./spec";
+import { siteLabel } from "./spec";
 import { readLock, writeLock } from "./lockfile";
 import type { Lockfile } from "./lockfile";
 import { check, fix, accept } from "./engine";
@@ -15,6 +16,10 @@ interface Args {
   root: string;
   values: string[];
   tetherId?: string;
+  /** Restrict check/fix to one tier (e.g. `--tier token` for a build-free pre-commit gate). */
+  tier?: string;
+  /** Restrict check/fix to these tether ids. */
+  only: string[];
   rest: string[];
 }
 
@@ -25,6 +30,7 @@ function parseArgs(argv: string[]): Args {
     lock: "yakir.lock",
     root: ".",
     values: [],
+    only: [],
     rest: [],
   };
   for (let i = 1; i < argv.length; i++) {
@@ -32,13 +38,27 @@ function parseArgs(argv: string[]): Args {
     if (t === "--manifest" || t === "-m") a.manifest = argv[++i] ?? a.manifest;
     else if (t === "--lock" || t === "-l") a.lock = argv[++i] ?? a.lock;
     else if (t === "--root" || t === "-r") a.root = argv[++i] ?? a.root;
-    else if (t === "--value" || t === "-v") {
+    else if (t === "--tier") a.tier = argv[++i] ?? a.tier;
+    else if (t === "--only") {
+      const v = argv[++i];
+      if (v) a.only.push(v);
+    } else if (t === "--value" || t === "-v") {
       const v = argv[++i];
       if (v) a.values.push(v);
     } else a.rest.push(t);
   }
   if ((a.cmd === "accept" || a.cmd === "discover") && a.rest[0]) a.tetherId = a.rest[0];
   return a;
+}
+
+/** Narrow a manifest to a tier and/or an explicit id set — used by check/fix gates. */
+function selectTethers(manifest: Manifest, args: Args): Manifest {
+  if (!args.tier && args.only.length === 0) return manifest;
+  const only = new Set(args.only);
+  const tethers = manifest.tethers.filter(
+    (t) => (!args.tier || (t.tier ?? "token") === args.tier) && (only.size === 0 || only.has(t.id)),
+  );
+  return { ...manifest, tethers };
 }
 
 function loadManifest(path: string): Manifest {
@@ -63,10 +83,18 @@ function tag(status: string): string {
   }
 }
 
+/** Whole-file / whole-command values are content fingerprints; abbreviate them. */
+function abbrevHashes(s: string): string {
+  return s.replace(/sha256:[0-9a-f]{64}/g, (h) => `‹content ${h.slice(7, 17)}…›`);
+}
+function pretty(v: string | undefined): string {
+  return v === undefined ? "(none)" : abbrevHashes(v);
+}
+
 function printReport(report: Report): void {
   for (const f of report.findings) {
-    console.log(`${tag(f.status)}  ${f.tetherId}  —  ${f.message}`);
-    for (const w of f.writes) console.log(`           ${w.site.artifact}: ${w.from ?? "(none)"} -> ${w.to}`);
+    console.log(`${tag(f.status)}  ${f.tetherId}  —  ${abbrevHashes(f.message)}`);
+    for (const w of f.writes) console.log(`           ${siteLabel(w.site)}: ${pretty(w.from)} -> ${pretty(w.to)}`);
   }
   const s = report.summary;
   console.log(
@@ -140,7 +168,7 @@ function main(): void {
         process.exit(2);
       }
       for (const v of seedValuesForTether(root, t, lock)) seeds.add(v);
-      knownArtifacts = new Set(t.sites.map((s) => s.artifact));
+      knownArtifacts = new Set(t.sites.map((s) => s.artifact).filter((a): a is string => a !== undefined));
     }
     if (seeds.size === 0) {
       console.error("discover needs a tether id (to seed from its values) or one or more --value <v>");
@@ -156,10 +184,10 @@ function main(): void {
   let report: Report;
   switch (args.cmd) {
     case "check":
-      report = check(manifest, root, lock);
+      report = check(selectTethers(manifest, args), root, lock);
       break;
     case "fix":
-      report = fix(manifest, root, lock);
+      report = fix(selectTethers(manifest, args), root, lock);
       writeLock(args.lock, lock);
       break;
     case "accept":
@@ -169,7 +197,7 @@ function main(): void {
     default:
       console.error(
         `unknown command: ${args.cmd}\n` +
-          `usage: yakir <check|fix|accept|discover|init> [--manifest f] [--lock f] [--root d] [--value v]`,
+          `usage: yakir <check|fix|accept|discover|init> [--manifest f] [--lock f] [--root d] [--tier t] [--only id] [--value v]`,
       );
       process.exit(2);
       return;
