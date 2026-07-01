@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, extname, sep } from "node:path";
 import type { Locator, Tether } from "./spec";
+import { isGlobArtifact } from "./spec";
 import { escapeRegExp } from "./locators";
 import type { Lockfile } from "./lockfile";
 import { extractSite } from "./extract";
@@ -44,7 +45,7 @@ export interface WalkOptions {
 }
 
 /** Minimal glob → RegExp: `**` spans path separators, `*` does not, `?` is one non-slash char. */
-function globToRegExp(glob: string): RegExp {
+export function globToRegExp(glob: string): RegExp {
   let re = "";
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i]!;
@@ -181,9 +182,12 @@ export function findValueSites(root: string, values: string[], opts: DiscoverOpt
 export function seedValuesForTether(root: string, tether: Tether, lock?: Lockfile): string[] {
   const vals = new Set<string>();
   for (const s of tether.sites) {
-    // Never run a command to seed discovery (declared-only boundary), and skip
-    // set-valued sites — their canonical "a, b, c" string is not a searchable value.
-    if (s.locator.kind === "command" || (s.locator.kind === "pattern" && s.locator.all)) continue;
+    // Never run a command to seed discovery (declared-only boundary); skip set-valued
+    // and whole-file sites (their canonical string / fingerprint is not a searchable
+    // value); skip glob artifacts (they don't name a single file).
+    if (s.locator.kind === "command" || s.locator.kind === "file") continue;
+    if (s.locator.kind === "pattern" && s.locator.all) continue;
+    if (isGlobArtifact(s.artifact)) continue;
     const ex = extractSite(root, s);
     if (ex.value !== undefined) vals.add(ex.value);
   }

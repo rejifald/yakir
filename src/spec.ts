@@ -13,7 +13,9 @@ export type CommandExtract =
    * First capture group of this regexp (scalar). With `all: true` the value is the
    * sorted-unique *set* of every capture; `allow` drops listed values from that set.
    */
-  | { regex: string; flags?: string; all?: true; allow?: Array<string | number> };
+  | { regex: string; flags?: string; all?: true; allow?: Array<string | number> }
+  /** The whole stdout, compared by content fingerprint — for a generated artifact. */
+  | { whole: true };
 
 export type Locator =
   | { kind: "json-pointer"; path: string }
@@ -24,6 +26,12 @@ export type Locator =
    */
   | { kind: "pattern"; match: string; flags?: string; all?: true; allow?: Array<string | number> }
   /**
+   * The whole file, compared by content fingerprint (trailing whitespace normalised).
+   * For a generated artifact: tether it to a `command` that emits its canonical
+   * output (`{ whole: true }`) and drift means "the committed file is stale".
+   */
+  | { kind: "file" }
+  /**
    * Executable tier: the value is *measured* by running a shell command, not read
    * from a file. SECURITY: a command site runs arbitrary shell, so it is
    * declared-only — `discover` never proposes one and never executes one.
@@ -31,11 +39,23 @@ export type Locator =
   | { kind: "command"; run: string; extract: CommandExtract };
 
 export interface Site {
-  /** The artifact this site anchors into. Omitted for `command` sites (they read no file). */
+  /**
+   * The artifact this site anchors into. Omitted for `command` sites (they read no
+   * file). May be a glob (e.g. every `package.json` under `packages`) — it then
+   * expands to one co-equal site per matching file, all sharing this locator and
+   * write cap. Use for a monorepo fact that must hold across every package.
+   */
   artifact?: string;
+  /** Glob(s) to drop from a glob `artifact`'s matches (e.g. private packages). */
+  exclude?: string[];
   locator: Locator;
   /** Whether Tether may auto-write this site. Default: "manual" (read-only). */
   write?: WriteCap;
+}
+
+/** True when `artifact` is a glob pattern that expands to many sites. */
+export function isGlobArtifact(artifact: string | undefined): boolean {
+  return artifact !== undefined && /[*?]/.test(artifact);
 }
 
 export interface Policy {
@@ -73,9 +93,11 @@ export function siteKey(site: Site): string {
       return `${site.artifact}#region:${l.name}`;
     case "pattern":
       return `${site.artifact}#pattern:${l.match}${l.all ? ":all" : ""}`;
+    case "file":
+      return `${site.artifact}#file`;
     case "command": {
       const e = l.extract;
-      const how = "json" in e ? `json:${e.json}` : `regex:${e.regex}${e.all ? ":all" : ""}`;
+      const how = "json" in e ? `json:${e.json}` : "whole" in e ? "whole" : `regex:${e.regex}${e.all ? ":all" : ""}`;
       return `command:${l.run}#${how}`;
     }
   }
@@ -88,10 +110,10 @@ export function siteLabel(site: Site): string {
   return siteKey(site);
 }
 
-/** True for sites whose value is a measured command or a set — never auto-rewritten. */
+/** True for sites yakir never auto-rewrites: a measured command, a set, or a whole-file hash. */
 export function isMeasuredOrSet(site: Site): boolean {
   const l = site.locator;
-  return l.kind === "command" || (l.kind === "pattern" && l.all === true);
+  return l.kind === "command" || l.kind === "file" || (l.kind === "pattern" && l.all === true);
 }
 
 export function siteWrite(site: Site): WriteCap {

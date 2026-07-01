@@ -37,15 +37,20 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the full design and
 Milestones 1–2 are implemented: the engine, the `check` / `fix` / `accept` /
 `init` CLI, the `discover` scanner, a `yakir.lock` baseline, and two tiers.
 
-- **Token tier** — three anchor strategies (`json-pointer`, `region`, `pattern`).
+- **Token tier** — anchor strategies `json-pointer`, `region`, `pattern`, and
+  `file` (a whole file, by content fingerprint).
 - **Executable tier** — a **`command`** source whose value is *measured* by running
-  a shell command and extracting from stdout (a JSON path, a regex capture, or the
-  **set** of all matches), plus **set-valued** `pattern` sites (`all` + `allow`)
-  reconciled by set-equality. Measured/set tethers are detect-and-report — yakir
-  never auto-rewrites a measurement or a set of numbers in prose. A command runs
-  arbitrary shell, so it is **declared-only**: `discover` never proposes or runs one.
+  a shell command and extracting from stdout (a JSON path, a regex capture, the
+  **set** of all matches, or the **whole** output), plus **set-valued** `pattern`
+  sites (`all` + `allow`) reconciled by set-equality. Measured/set/whole-file
+  tethers are detect-and-report — yakir never auto-rewrites a measurement, a set, or
+  a generated file in place. A command runs arbitrary shell, so it is
+  **declared-only**: `discover` never proposes or runs one.
+- **Glob sites** — a site's `artifact` may be a glob (`packages/*/package.json`); it
+  expands to one co-equal site per matching file (with `exclude`), so one tether
+  guards a fact across an entire monorepo and covers new packages automatically.
 
-42 tests green, `tsc --noEmit` clean, zero runtime dependencies.
+53 tests green, `tsc --noEmit` clean, zero runtime dependencies.
 
 **Dogfood:** running `yakir check` against the StitchAPI repo catches real drift in
 both tiers — a README version that lags `package.json` (token), and five files that

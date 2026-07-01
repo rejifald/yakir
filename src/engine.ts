@@ -2,6 +2,7 @@ import type { Manifest, Tether, Severity } from "./spec";
 import { extractAll, writeSite } from "./extract";
 import { diagnose } from "./reconcile";
 import type { WriteAction } from "./reconcile";
+import { expandTether } from "./expand";
 import type { Lockfile } from "./lockfile";
 
 export type FindingStatus =
@@ -78,7 +79,10 @@ function values(d: { values: string[] }): string {
 /** Read-only: report drift, never touch files or the lock. */
 export function check(manifest: Manifest, root: string, lock: Lockfile): Report {
   const findings = manifest.tethers.map((t): Finding => {
-    const d = diagnose(t, extractAll(root, t), lock.tethers[t.id]);
+    const ex = expandTether(root, t);
+    if (ex.problems.length > 0) return integrityFinding(t, ex.problems);
+    const et = ex.tether;
+    const d = diagnose(et, extractAll(root, et), lock.tethers[t.id]);
     switch (d.kind) {
       case "fresh":
         return finding(t, "fresh", "in sync", []);
@@ -104,7 +108,10 @@ export function check(manifest: Manifest, root: string, lock: Lockfile): Report 
 /** Apply auto-fixes and advance the baseline. Mutates `lock`. */
 export function fix(manifest: Manifest, root: string, lock: Lockfile): Report {
   const findings = manifest.tethers.map((t): Finding => {
-    const d = diagnose(t, extractAll(root, t), lock.tethers[t.id]);
+    const ex = expandTether(root, t);
+    if (ex.problems.length > 0) return integrityFinding(t, ex.problems);
+    const et = ex.tether;
+    const d = diagnose(et, extractAll(root, et), lock.tethers[t.id]);
     switch (d.kind) {
       case "fresh":
         lock.tethers[t.id] = d.nextBaseline;
@@ -146,7 +153,10 @@ export function accept(
 ): Report {
   const targets = manifest.tethers.filter((t) => !opts.tetherId || t.id === opts.tetherId);
   const findings = targets.map((t): Finding => {
-    const d = diagnose(t, extractAll(root, t), lock.tethers[t.id]);
+    const ex = expandTether(root, t);
+    if (ex.problems.length > 0) return integrityFinding(t, ex.problems);
+    const et = ex.tether;
+    const d = diagnose(et, extractAll(root, et), lock.tethers[t.id]);
     if (d.kind === "integrity") return integrityFinding(t, d.problems);
     if (d.kind === "conflict" || d.kind === "disagree") {
       return finding(t, d.kind, `cannot accept while sites disagree (${values(d)}); fix them first`, []);

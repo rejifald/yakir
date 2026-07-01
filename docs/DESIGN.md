@@ -150,7 +150,17 @@ selectors arrive with the semantic tier. Strategies are pluggable
 The executable tier adds one locator that does not *read* a region at all: a
 **`command`** site measures its value by running a command and extracting from
 stdout. It anchors to a computation rather than a span — the same `(locator,
-extractor)` shape, with the artifact being a process instead of a file.
+extractor)` shape, with the artifact being a process instead of a file. A **`file`**
+locator anchors to a whole file (compared by content fingerprint) — pair it with a
+`command` that emits a generator's canonical output and the fact becomes "this
+generated artifact is not stale."
+
+A site's `artifact` may also be a **glob**. It expands to one co-equal site per
+matching file (minus `exclude`d paths), so a single tether can bind a fact across
+every package in a monorepo — the version, the `engines.node` floor, the license —
+and a newly-added package is covered without editing the manifest. This is how the
+"cluster" (§2) scales past a hand-listed set without giving up the sourceless model:
+the expanded sites are still peers.
 
 ## 7. Auto-write capability and the trust ratchet
 
