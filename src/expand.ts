@@ -1,4 +1,5 @@
-import { relative, sep } from "node:path";
+import { readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import type { Site, Tether } from "./spec";
 import { isGlobArtifact } from "./spec";
 import { walkFiles, globToRegExp } from "./discover";
@@ -7,6 +8,65 @@ export interface ExpandResult {
   tether: Tether;
   /** Non-empty when a glob site matched nothing — a broken anchor (inventory integrity). */
   problems: string[];
+}
+
+function isDir(abs: string): boolean {
+  try {
+    return statSync(abs).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function isFile(abs: string): boolean {
+  try {
+    return statSync(abs).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve a repo-relative glob to matching files. Walks segment by segment so a
+ * per-package-manifest pattern only reads `packages/` and stats each candidate — it
+ * never descends into `src/`, keeping pre-commit checks fast. A `**` segment (rare)
+ * falls back to a full tree walk filtered by the whole pattern.
+ */
+function resolveGlob(root: string, pattern: string): string[] {
+  if (pattern.includes("**")) {
+    const re = globToRegExp(pattern);
+    return walkFiles(root)
+      .map((abs) => relative(root, abs).split(sep).join("/"))
+      .filter((f) => re.test(f));
+  }
+  const segments = pattern.split("/");
+  let dirs: string[] = [""]; // repo-relative dirs matched so far ("" = root)
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!;
+    const last = i === segments.length - 1;
+    const wild = /[*?]/.test(seg);
+    const next: string[] = [];
+    for (const d of dirs) {
+      if (!wild) {
+        const rel = d ? `${d}/${seg}` : seg;
+        const abs = join(root, rel);
+        if (last ? isFile(abs) : isDir(abs)) next.push(rel);
+        continue;
+      }
+      const re = globToRegExp(seg);
+      let entries;
+      try {
+        entries = readdirSync(join(root, d), { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const e of entries) {
+        if (!re.test(e.name)) continue;
+        if (last ? e.isFile() : e.isDirectory()) next.push(d ? `${d}/${e.name}` : e.name);
+      }
+    }
+    dirs = next;
+  }
+  return dirs;
 }
 
 /**
@@ -18,7 +78,6 @@ export interface ExpandResult {
 export function expandTether(root: string, tether: Tether): ExpandResult {
   if (!tether.sites.some((s) => isGlobArtifact(s.artifact))) return { tether, problems: [] };
 
-  const files = walkFiles(root).map((abs) => relative(root, abs).split(sep).join("/"));
   const problems: string[] = [];
   const sites: Site[] = [];
   for (const s of tether.sites) {
@@ -26,9 +85,10 @@ export function expandTether(root: string, tether: Tether): ExpandResult {
       sites.push(s);
       continue;
     }
-    const include = globToRegExp(s.artifact!);
     const excludes = (s.exclude ?? []).map(globToRegExp);
-    const matches = files.filter((f) => include.test(f) && !excludes.some((re) => re.test(f))).sort();
+    const matches = resolveGlob(root, s.artifact!)
+      .filter((f) => !excludes.some((re) => re.test(f)))
+      .sort();
     if (matches.length === 0) {
       problems.push(`glob site matched no files: ${s.artifact}`);
       continue;
