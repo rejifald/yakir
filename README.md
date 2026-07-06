@@ -144,3 +144,10 @@ the build-free tiers early and the measured ones where a build exists:
 yakir check --tier token   # pre-commit: literal facts only, no build needed
 yakir check                # CI / pre-push (after the build): every tier, measured
 ```
+
+## Related projects
+
+- **[komirka](https://github.com/rejifald/komirka)** — atomic configuration: each config value
+  is an inert, validated descriptor bound per runtime. Complementary and deliberately distinct —
+  yakir keeps *one fact represented across many artifacts* in sync (no single source); komirka is
+  config, one authoritative slot a runtime reads.
